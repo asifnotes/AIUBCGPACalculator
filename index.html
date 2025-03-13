@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-Subject CGPA Calculator</title>
+    <!-- Include html2pdf.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Basic Reset */
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          font-family: "Times New Roman", Times, serif;
+          background: #f4f7f8;
+          color: #333;
+          padding: 20px;
+        }
+        .container {
+          max-width: 800px;
+          margin: 40px auto;
+          background: #fff;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        #subjects-container {
+          margin-bottom: 20px;
+        }
+        .subject-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin-bottom: 10px;
+          padding: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          background-color: #fafafa;
+          align-items: center;
+        }
+        .subject-row > * {
+          flex: 1 1 30%;
+          margin: 5px;
+        }
+        .subject-row .remove-btn {
+          flex: 1 1 10%;
+          background: #dc3545;
+          color: #fff;
+          border: none;
+          padding: 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          max-width: 100px;
+          align-self: center;
+        }
+        #add-subject-btn {
+          background: #28a745;
+          color: #fff;
+          border: none;
+          padding: 10px 15px;
+          border-radius: 4px;
+          cursor: pointer;
+          margin-bottom: 20px;
+        }
+        .calculate-btn,
+        .download-btn {
+          background: #007BFF;
+          color: #fff;
+          border: none;
+          padding: 12px;
+          border-radius: 4px;
+          font-size: 1em;
+          cursor: pointer;
+          margin-top: 10px;
+          width: 100%;
+        }
+        .calculate-btn:hover,
+        .download-btn:hover {
+          background: #0056b3;
+        }
+        .result {
+          margin-top: 20px;
+          background: #e8f5e9;
+          padding: 15px;
+          border-radius: 4px;
+          text-align: center;
+          font-size: 1.1em;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+        }
+        table, th, td {
+          border: 1px solid #ccc;
+        }
+        th, td {
+          padding: 8px;
+          text-align: center;
+        }
+        /* Responsive Media Queries */
+        /* Small Mobile Phones (e.g., iPhone SE) */
+        @media (max-width: 480px) {
+          .container {
+             width: 95%;
+             padding: 10px;
+          }
+          h1 {
+             font-size: 1.5em;
+          }
+          input[type="number"],
+          input[type="text"],
+          select {
+             padding: 8px;
+             font-size: 0.9em;
+          }
+          .calculate-btn, .download-btn, #add-subject-btn {
+             font-size: 0.9em;
+             padding: 10px;
+          }
+          .subject-row > * {
+             flex: 1 1 100%;
+          }
+        }
+        /* Tablets (Portrait Mode) */
+        @media (min-width: 481px) and (max-width: 768px) {
+          .container {
+             width: 90%;
+             padding: 15px;
+          }
+          h1 {
+             font-size: 1.7em;
+          }
+        }
+        /* Laptops (Landscape Mode) */
+        @media (min-width: 769px) and (max-width: 1024px) {
+          .container {
+             width: 80%;
+          }
+        }
+        /* Larger Screens (e.g., MacBook Pro 16") */
+        @media (min-width: 1025px) {
+          .container {
+             width: 800px;
+          }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="calculator-container">
+    <h1>Multi-Subject CGPA Calculator</h1>
+
+    <div id="subjects-container">
+        <!-- Pre-added subject row with subject-wise weight distribution -->
+        <div class="subject-row">
+            <input type="text" class="subject-name" placeholder="Subject Name (optional)" />
+            <input type="number" class="midterm" placeholder="Midterm Score (out of 100)" min="0" max="100" />
+            <input type="number" class="final" placeholder="Final Score (out of 100)" min="0" max="100" />
+            <select class="weight-select">
+                <option value="40">40% Midterm &amp; 60% Final</option>
+                <option value="50">50% Midterm &amp; 50% Final</option>
+            </select>
+            <button type="button" class="remove-btn" onclick="removeSubject(this)">Remove</button>
+        </div>
+    </div>
+    <button type="button" id="add-subject-btn" onclick="addSubject()">Add Subject</button>
+
+    <button type="button" class="calculate-btn" onclick="calculateCGPA()">Calculate CGPA</button>
+    <!-- Download PDF button (only downloads the calculated result details) -->
+    <button type="button" class="download-btn" onclick="downloadPDF()">Download PDF</button>
+
+    <!-- This result container displays the calculated details and is the only part downloaded -->
+    <div id="result" class="result"></div>
+</div>
+
+<script>
+    // Add a new subject row dynamically
+    function addSubject() {
+      var container = document.getElementById('subjects-container');
+      var newRow = document.createElement('div');
+      newRow.className = 'subject-row';
+      newRow.innerHTML = `
+        <input type="text" class="subject-name" placeholder="Subject Name (optional)" />
+        <input type="number" class="midterm" placeholder="Midterm Score (out of 100)" min="0" max="100" />
+        <input type="number" class="final" placeholder="Final Score (out of 100)" min="0" max="100" />
+        <select class="weight-select">
+          <option value="40">40% Midterm &amp; 60% Final</option>
+          <option value="50">50% Midterm &amp; 50% Final</option>
+        </select>
+        <button type="button" class="remove-btn" onclick="removeSubject(this)">Remove</button>
+      `;
+      container.appendChild(newRow);
+    }
+
+    // Remove a subject row (ensuring at least one remains)
+    function removeSubject(button) {
+      var container = document.getElementById('subjects-container');
+      if (container.children.length > 1) {
+        button.parentElement.remove();
+      } else {
+        alert("At least one subject is required.");
+      }
+    }
+
+    // Map weighted score to letter grade and grade point
+    function getGradeDetails(score) {
+      let letterGrade, gradePoint;
+      if (score >= 90) {
+        letterGrade = "A+";
+        gradePoint = 4.00;
+      } else if (score >= 85) {
+        letterGrade = "A";
+        gradePoint = 3.75;
+      } else if (score >= 80) {
+        letterGrade = "B+";
+        gradePoint = 3.50;
+      } else if (score >= 75) {
+        letterGrade = "B";
+        gradePoint = 3.25;
+      } else if (score >= 70) {
+        letterGrade = "C+";
+        gradePoint = 3.00;
+      } else if (score >= 65) {
+        letterGrade = "C";
+        gradePoint = 2.75;
+      } else if (score >= 60) {
+        letterGrade = "D+";
+        gradePoint = 2.50;
+      } else if (score >= 50) {
+        letterGrade = "D";
+        gradePoint = 2.25;
+      } else {
+        letterGrade = "F";
+        gradePoint = 0.00;
+      }
+      return { letterGrade, gradePoint };
+    }
+
+    // Calculate overall CGPA and display subject-wise details
+    function calculateCGPA() {
+      var subjectRows = document.querySelectorAll('.subject-row');
+      let totalGradePoints = 0;
+      let subjectCount = 0;
+      let resultHTML = `<table>
+                          <tr>
+                            <th>Subject</th>
+                            <th>Midterm</th>
+                            <th>Final</th>
+                            <th>Weight Distribution</th>
+                            <th>Weighted Score</th>
+                            <th>Letter Grade</th>
+                            <th>Grade Point</th>
+                          </tr>`;
+      for (let row of subjectRows) {
+        let subjectName = row.querySelector('.subject-name').value || ("Subject " + (subjectCount + 1));
+        let midtermVal = parseFloat(row.querySelector('.midterm').value);
+        let finalVal = parseFloat(row.querySelector('.final').value);
+        let weightOption = row.querySelector('.weight-select').value;
+        // Validate that scores are entered
+        if (isNaN(midtermVal) || isNaN(finalVal)) {
+          alert("Please enter valid scores for all subjects.");
+          return;
+        }
+        let midtermWeight, finalWeight;
+        if (weightOption === "40") {
+          midtermWeight = 0.40;
+          finalWeight = 0.60;
+        } else {
+          midtermWeight = 0.50;
+          finalWeight = 0.50;
+        }
+        let weightedScore = (midtermVal * midtermWeight) + (finalVal * finalWeight);
+        let gradeDetails = getGradeDetails(weightedScore);
+        totalGradePoints += gradeDetails.gradePoint;
+        subjectCount++;
+        let weightText = (weightOption === "40") ? "40% / 60%" : "50% / 50%";
+        resultHTML += `<tr>
+                         <td>${subjectName}</td>
+                         <td>${midtermVal}</td>
+                         <td>${finalVal}</td>
+                         <td>${weightText}</td>
+                         <td>${weightedScore.toFixed(2)}</td>
+                         <td>${gradeDetails.letterGrade}</td>
+                         <td>${gradeDetails.gradePoint.toFixed(2)}</td>
+                       </tr>`;
+      }
+      resultHTML += `</table>`;
+      let overallCGPA = totalGradePoints / subjectCount;
+      resultHTML += `<p><strong>Overall CGPA:</strong> ${overallCGPA.toFixed(2)}</p>`;
+      document.getElementById('result').innerHTML = resultHTML;
+    }
+
+    // Download only the calculated CGPA details as a PDF (from the result container)
+    function downloadPDF() {
+      var resultDiv = document.getElementById('result');
+      if (resultDiv.innerHTML.trim() === "") {
+        alert("Please calculate the CGPA first.");
+        return;
+      }
+      var opt = {
+        margin: 0.5,
+        filename: 'CGPA_Details.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(resultDiv).save();
+    }
+</script>
+</body>
+</html>
