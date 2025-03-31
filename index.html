@@ -23,6 +23,7 @@
           --table-header-text: #fff;
           --zebra-stripe: #f9f9f9;
           --border-radius: 8px;
+          --transition-speed: 0.3s;
         }
 
         /* Global Styles */
@@ -70,8 +71,8 @@
           border: 1px solid #e0e0e0;
           border-radius: var(--border-radius);
           background-color: #fafafa;
-          align-items: center;
-          transition: background-color 0.3s ease, transform 0.2s ease;
+          align-items: flex-start;
+          transition: background-color var(--transition-speed), transform 0.2s ease;
         }
         .subject-row:hover {
           background-color: #f0f0f0;
@@ -94,7 +95,7 @@
           padding: 10px;
           border: 1px solid #ccc;
           border-radius: 4px;
-          transition: border-color 0.2s ease;
+          transition: border-color var(--transition-speed);
         }
         .subject-field input:focus,
         .subject-field select:focus {
@@ -110,8 +111,9 @@
           padding: 10px 15px;
           border-radius: 4px;
           cursor: pointer;
-          transition: background 0.3s ease;
+          transition: background var(--transition-speed);
           align-self: center;
+          margin-top: 20px;
         }
         .remove-btn:hover {
           background: #b02a37;
@@ -127,7 +129,7 @@
           cursor: pointer;
           margin: 10px 0;
           width: 100%;
-          transition: background 0.3s ease, transform 0.2s ease;
+          transition: background var(--transition-speed), transform 0.2s ease;
         }
         .btn:hover {
           background: var(--secondary-dark);
@@ -143,6 +145,7 @@
           font-size: 1.1em;
           box-shadow: 0 4px 8px rgba(0,0,0,0.05);
           overflow-x: auto;
+          transition: opacity var(--transition-speed);
         }
         /* Table Styles */
         table {
@@ -168,6 +171,8 @@
           color: var(--error-color);
           font-size: 0.9em;
           margin-top: 5px;
+          height: 1em;
+          transition: opacity var(--transition-speed);
         }
         /* Responsive Design */
         @media (max-width: 480px) {
@@ -208,100 +213,118 @@
     <h1>AIUB CGPA Calculator</h1>
 </header>
 <main id="calculator-container">
-    <form id="cgpa-form">
+    <form id="cgpa-form" role="form" aria-label="CGPA Calculator">
         <section id="subjects-container">
             <!-- Pre-rendered subject row -->
             <div class="subject-row">
                 <div class="subject-field">
-                    <label>Subject Name</label>
-                    <input type="text" class="subject-name" placeholder="Optional" />
+                    <label for="subject-name-1">Subject Name</label>
+                    <input type="text" id="subject-name-1" class="subject-name" placeholder="Optional" aria-label="Subject Name" />
                 </div>
                 <div class="subject-field">
-                    <label>Midterm Score (0-100)</label>
-                    <input type="number" class="midterm" placeholder="Midterm" min="0" max="100" />
-                    <span class="error-message midterm-error"></span>
+                    <label for="midterm-1">Midterm Score (0-100)</label>
+                    <input type="number" id="midterm-1" class="midterm" placeholder="Midterm" min="0" max="100" aria-label="Midterm Score" />
+                    <span class="error-message midterm-error" aria-live="polite"></span>
                 </div>
                 <div class="subject-field">
-                    <label>Final Score (0-100)</label>
-                    <input type="number" class="final" placeholder="Final" min="0" max="100" />
-                    <span class="error-message final-error"></span>
+                    <label for="final-1">Final Score (0-100)</label>
+                    <input type="number" id="final-1" class="final" placeholder="Final" min="0" max="100" aria-label="Final Score" />
+                    <span class="error-message final-error" aria-live="polite"></span>
                 </div>
                 <div class="subject-field">
-                    <label>Weight Distribution</label>
-                    <select class="weight-select">
+                    <label for="weight-1">Weight Distribution</label>
+                    <select id="weight-1" class="weight-select" aria-label="Weight Distribution">
                         <option value="40">40% Midterm &amp; 60% Final</option>
                         <option value="50">50% Midterm &amp; 50% Final</option>
                     </select>
                 </div>
-                <button type="button" class="remove-btn">Remove</button>
+                <button type="button" class="remove-btn" aria-label="Remove Subject">Remove</button>
             </div>
         </section>
-        <button type="button" id="add-subject-btn" class="btn">Add Subject</button>
-        <button type="button" id="calculate-btn" class="btn">Calculate CGPA</button>
+        <button type="button" id="add-subject-btn" class="btn" aria-label="Add Subject">Add Subject</button>
+        <button type="button" id="calculate-btn" class="btn" aria-label="Calculate CGPA">Calculate CGPA</button>
         <!-- Download button captures only the result container -->
-        <button type="button" id="download-btn" class="btn">Download PDF</button>
+        <button type="button" id="download-btn" class="btn" aria-label="Download CGPA Details as PDF">Download PDF</button>
     </form>
-    <div id="result" class="result"></div>
+    <div id="result" class="result" role="region" aria-live="polite"></div>
 </main>
 
 <script>
-    // Encapsulate functionality within an IIFE to avoid polluting global namespace
     (function() {
       "use strict";
 
-      // Cache frequently accessed elements
       const subjectsContainer = document.getElementById('subjects-container');
       const addSubjectBtn = document.getElementById('add-subject-btn');
       const calculateBtn = document.getElementById('calculate-btn');
       const downloadBtn = document.getElementById('download-btn');
       const resultDiv = document.getElementById('result');
-      const cgpaForm = document.getElementById('cgpa-form');
+      let subjectCount = 1;
 
-      // Attach event listeners after DOM loads
+      // Initialize event listeners when DOM is ready
       document.addEventListener('DOMContentLoaded', () => {
         addSubjectBtn.addEventListener('click', addSubject);
         calculateBtn.addEventListener('click', calculateCGPA);
         downloadBtn.addEventListener('click', downloadPDF);
-        // Delegate remove button event on subject rows
         subjectsContainer.addEventListener('click', event => {
           if (event.target && event.target.classList.contains('remove-btn')) {
             removeSubject(event.target);
           }
         });
+        // Real-time validation for initial row
+        addValidationListeners(subjectsContainer.querySelector('.subject-row'));
       });
 
-      // Add a new subject row dynamically
+      // Add real-time validation on input fields
+      const addValidationListeners = (row) => {
+        const midtermInput = row.querySelector('.midterm');
+        const finalInput = row.querySelector('.final');
+        midtermInput.addEventListener('input', () => validateField(midtermInput, row.querySelector('.midterm-error')));
+        finalInput.addEventListener('input', () => validateField(finalInput, row.querySelector('.final-error')));
+      };
+
+      const validateField = (input, errorSpan) => {
+        const value = parseFloat(input.value);
+        if (isNaN(value) || value < 0 || value > 100) {
+          errorSpan.textContent = "Enter a valid score (0-100)";
+        } else {
+          errorSpan.textContent = "";
+        }
+      };
+
+      // Dynamically add a new subject row with unique IDs
       const addSubject = () => {
+        subjectCount++;
         const newRow = document.createElement('div');
         newRow.className = 'subject-row';
         newRow.innerHTML = `
           <div class="subject-field">
-            <label>Subject Name</label>
-            <input type="text" class="subject-name" placeholder="Optional" />
+            <label for="subject-name-${subjectCount}">Subject Name</label>
+            <input type="text" id="subject-name-${subjectCount}" class="subject-name" placeholder="Optional" aria-label="Subject Name" />
           </div>
           <div class="subject-field">
-            <label>Midterm Score (0-100)</label>
-            <input type="number" class="midterm" placeholder="Midterm" min="0" max="100" />
-            <span class="error-message midterm-error"></span>
+            <label for="midterm-${subjectCount}">Midterm Score (0-100)</label>
+            <input type="number" id="midterm-${subjectCount}" class="midterm" placeholder="Midterm" min="0" max="100" aria-label="Midterm Score" />
+            <span class="error-message midterm-error" aria-live="polite"></span>
           </div>
           <div class="subject-field">
-            <label>Final Score (0-100)</label>
-            <input type="number" class="final" placeholder="Final" min="0" max="100" />
-            <span class="error-message final-error"></span>
+            <label for="final-${subjectCount}">Final Score (0-100)</label>
+            <input type="number" id="final-${subjectCount}" class="final" placeholder="Final" min="0" max="100" aria-label="Final Score" />
+            <span class="error-message final-error" aria-live="polite"></span>
           </div>
           <div class="subject-field">
-            <label>Weight Distribution</label>
-            <select class="weight-select">
+            <label for="weight-${subjectCount}">Weight Distribution</label>
+            <select id="weight-${subjectCount}" class="weight-select" aria-label="Weight Distribution">
               <option value="40">40% Midterm &amp; 60% Final</option>
               <option value="50">50% Midterm &amp; 50% Final</option>
             </select>
           </div>
-          <button type="button" class="remove-btn">Remove</button>
+          <button type="button" class="remove-btn" aria-label="Remove Subject">Remove</button>
         `;
         subjectsContainer.appendChild(newRow);
+        addValidationListeners(newRow);
       };
 
-      // Remove a subject row (ensuring at least one remains)
+      // Remove a subject row ensuring at least one remains
       const removeSubject = (button) => {
         if (subjectsContainer.children.length > 1) {
           button.closest('.subject-row').remove();
@@ -344,22 +367,24 @@
         return { letterGrade, gradePoint };
       };
 
-      // Validate scores and return false if any errors are found
+      // Validate each row before calculation
       const validateRow = (row) => {
         const midtermInput = row.querySelector('.midterm');
         const finalInput = row.querySelector('.final');
         let valid = true;
-        row.querySelector('.midterm-error').textContent = "";
-        row.querySelector('.final-error').textContent = "";
+        const midtermError = row.querySelector('.midterm-error');
+        const finalError = row.querySelector('.final-error');
+        midtermError.textContent = "";
+        finalError.textContent = "";
 
         const midtermVal = parseFloat(midtermInput.value);
         const finalVal = parseFloat(finalInput.value);
         if (isNaN(midtermVal) || midtermVal < 0 || midtermVal > 100) {
-          row.querySelector('.midterm-error').textContent = "Enter a valid score (0-100)";
+          midtermError.textContent = "Enter a valid score (0-100)";
           valid = false;
         }
         if (isNaN(finalVal) || finalVal < 0 || finalVal > 100) {
-          row.querySelector('.final-error').textContent = "Enter a valid score (0-100)";
+          finalError.textContent = "Enter a valid score (0-100)";
           valid = false;
         }
         return valid;
@@ -369,23 +394,24 @@
       const calculateCGPA = () => {
         const subjectRows = document.querySelectorAll('.subject-row');
         let totalGradePoints = 0;
-        let subjectCount = 0;
         let tableHTML = `<table>
                           <tr>
                             <th>Subject</th>
                             <th>Midterm</th>
                             <th>Final</th>
-                            <th>Weight Distribution</th>
-                            <th>Weighted Score</th>
+                            <th>Marks Distribution</th>
+                            <th>Marks Score</th>
                             <th>Letter Grade</th>
                             <th>Grade Point</th>
                           </tr>`;
+        let subjectIndex = 0;
         for (let row of subjectRows) {
           if (!validateRow(row)) {
             alert("Please correct the highlighted errors.");
             return;
           }
-          const subjectName = row.querySelector('.subject-name').value || ("Subject " + (subjectCount + 1));
+          subjectIndex++;
+          const subjectName = row.querySelector('.subject-name').value || ("Subject " + subjectIndex);
           const midtermVal = parseFloat(row.querySelector('.midterm').value);
           const finalVal = parseFloat(row.querySelector('.final').value);
           const weightOption = row.querySelector('.weight-select').value;
@@ -393,7 +419,6 @@
           const weightedScore = (midtermVal * midtermWeight) + (finalVal * finalWeight);
           const gradeDetails = getGradeDetails(weightedScore);
           totalGradePoints += gradeDetails.gradePoint;
-          subjectCount++;
           const weightText = (weightOption === "40") ? "40% / 60%" : "50% / 50%";
           tableHTML += `<tr>
                           <td>${subjectName}</td>
@@ -406,17 +431,13 @@
                         </tr>`;
         }
         tableHTML += `</table>`;
-        const overallCGPA = totalGradePoints / subjectCount;
+        const overallCGPA = totalGradePoints / subjectRows.length;
         tableHTML += `<p style="margin-top: 15px;"><strong>Overall CGPA:</strong> ${overallCGPA.toFixed(2)}</p>`;
         resultDiv.innerHTML = tableHTML;
       };
 
-      // Download only the calculated CGPA details as a PDF (result container only)
-      const downloadPDF = () => {
-        if (resultDiv.innerHTML.trim() === "") {
-          alert("Please calculate the CGPA first.");
-          return;
-        }
+      // Generate and download PDF containing the calculated CGPA details
+      const generatePDF = () => {
         const opt = {
           margin: 0.5,
           filename: 'CGPA_Details.pdf',
@@ -425,6 +446,19 @@
           jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(resultDiv).save();
+      };
+
+      // Download PDF; if no calculation exists, perform calculation first
+      const downloadPDF = () => {
+        if (resultDiv.innerHTML.trim() === "") {
+          calculateCGPA();
+          // Allow a brief delay for DOM update before generating the PDF
+          setTimeout(() => {
+            generatePDF();
+          }, 300);
+        } else {
+          generatePDF();
+        }
       };
 
     })();
